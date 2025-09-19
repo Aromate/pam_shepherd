@@ -48,7 +48,7 @@ static void ensure_runtime_dir(uid_t uid)
     mkdir(dir, 0700); /* Ignore errors - systemd-logind usually handles this */
 }
 
-/* Start shepherd - simple fork */
+/* Start shepherd using double-fork with proper waitpid */
 static void start_shepherd(pam_handle_t *pamh, uid_t uid, gid_t gid, const char *home, const char *user)
 {
     pid_t pid = fork();
@@ -59,11 +59,24 @@ static void start_shepherd(pam_handle_t *pamh, uid_t uid, gid_t gid, const char 
     }
 
     if (pid > 0) {
-        /* Parent returns - child becomes daemon */
+        /* Parent waits for intermediate child to prevent zombie */
+        waitpid(pid, NULL, 0);
         return;
     }
 
-    /* Child: become session leader */
+    /* First child: fork again and exit */
+    pid = fork();
+
+    if (pid < 0) {
+        _exit(127);
+    }
+
+    if (pid > 0) {
+        /* Intermediate child exits immediately */
+        _exit(0);
+    }
+
+    /* Grandchild: cannot acquire controlling terminal */
     setsid();
 
     /* Redirect I/O to /dev/null */
