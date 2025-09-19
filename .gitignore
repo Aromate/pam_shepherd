@@ -1,0 +1,54 @@
+# Build artifacts
+*.o
+*.so
+*.a
+*.lo
+*.la
+
+# Debug symbols
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Dependencies
+.deps/
+.libs/
+
+# Editor files
+*~
+*.swp
+*.swo
+*.bak
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+test_*
+*.test
+*.log
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# Temporary files
+.tmp/
+tmp/
+temp/
+
+# Build directories
+build/
+_build/
+out/
+
+# Documentation
+*.pdf
+docs/_build/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,140 @@
+.TH PAM_SHEPHERD 8 "January 2025" "pam_shepherd 1.0" "System Administration"
+.SH NAME
+pam_shepherd \- PAM module to start GNU Shepherd daemon on user login
+.SH SYNOPSIS
+.B pam_shepherd.so
+.RI [ options ]
+.SH DESCRIPTION
+The
+.B pam_shepherd
+PAM module automatically starts the GNU Shepherd daemon for non-root users
+when they log in. It checks if the shepherd socket exists at
+.I /run/user/{uid}/shepherd/socket
+and starts the shepherd daemon only if the socket doesn't exist.
+.PP
+This module is designed to be used with the
+.B session
+management group of PAM. It should be placed after modules that create
+the XDG_RUNTIME_DIR (such as pam_systemd or pam_xdg).
+.SH OPTIONS
+.TP
+.B debug
+Enable debug logging to syslog. This will log detailed information about
+the module's operation, including socket checks and daemon startup attempts.
+Debug messages are logged with LOG_DEBUG priority.
+.TP
+.B quiet
+Suppress non-error messages. Only error conditions will be logged to syslog.
+This is useful for reducing log verbosity in production environments.
+.TP
+.BI wait= milliseconds
+Specify how long to wait (in milliseconds) after forking to check if shepherd
+started successfully. Default is 200ms. Valid range is 0-5000ms.
+Setting to 0 skips the check entirely.
+.SH MODULE TYPES PROVIDED
+Only the
+.B session
+module type is provided.
+.SH RETURN VALUES
+.TP
+.B PAM_SUCCESS
+The shepherd daemon is already running, was successfully started, or the user
+is root (skipped).
+.TP
+.B PAM_SESSION_ERR
+Failed to start the shepherd daemon when the module is configured with proper
+error handling. This is returned when shepherd cannot be executed or exits
+immediately after starting.
+.TP
+.B PAM_USER_UNKNOWN
+Cannot determine user information from the system password database.
+.TP
+.B PAM_IGNORE
+The module encountered an error but is signaling that it should be ignored
+(e.g., cannot determine username from PAM).
+.SH EXAMPLES
+Basic configuration in
+.IR /etc/pam.d/system-login :
+.PP
+.nf
+session  optional  pam_systemd.so
+session  optional  pam_shepherd.so
+.fi
+.PP
+With options:
+.PP
+.nf
+session  optional  pam_shepherd.so quiet wait=500
+.fi
+.PP
+For debugging:
+.PP
+.nf
+session  optional  pam_shepherd.so debug
+.fi
+.SH FILES
+.TP
+.I /run/user/{uid}/shepherd/socket
+The shepherd control socket. The module checks for this file to determine
+if shepherd is already running for the user.
+.TP
+.I /lib64/security/pam_shepherd.so
+The PAM module location on 64-bit systems (may vary by distribution).
+.TP
+.I /var/log/auth.log
+System authentication log where PAM messages are typically logged
+(location varies by distribution; might be
+.I /var/log/secure
+or in journald).
+.SH NOTES
+.IP \(bu
+The module requires that XDG_RUNTIME_DIR (/run/user/{uid}) exists.
+This is typically created by pam_systemd or pam_xdg. Ensure pam_shepherd
+is configured
+.B after
+these modules in the PAM stack.
+.IP \(bu
+The shepherd executable must be in one of these locations:
+/usr/local/bin/shepherd, /usr/bin/shepherd, or in the system PATH.
+.IP \(bu
+Root user (uid 0) is explicitly skipped.
+.IP \(bu
+The module does not stop shepherd on logout; shepherd manages its own lifecycle.
+.IP \(bu
+Use "optional" rather than "required" in PAM configuration to prevent
+login failures if shepherd cannot start.
+.SH LOGGING
+All messages are logged via syslog with the facility LOG_AUTH.
+Log levels used:
+.IP \(bu
+.B LOG_ERR
+\- Critical errors (cannot find user, fork failed, etc.)
+.IP \(bu
+.B LOG_WARNING
+\- Non-critical failures (shepherd failed to start but login proceeds)
+.IP \(bu
+.B LOG_INFO
+\- Normal operations (shepherd started successfully) when not in quiet mode
+.IP \(bu
+.B LOG_DEBUG
+\- Detailed debugging information when debug option is enabled
+.SH SECURITY CONSIDERATIONS
+.IP \(bu
+The module drops privileges to the target user before executing shepherd.
+.IP \(bu
+A minimal environment is provided to shepherd (only XDG_RUNTIME_DIR, HOME,
+USER, PATH, and LANG).
+.IP \(bu
+The module does not read any configuration files or user input.
+.SH SEE ALSO
+.BR pam (8),
+.BR pam.conf (5),
+.BR pam.d (5),
+.BR shepherd (1),
+.BR systemd-logind (8),
+.BR pam_systemd (8),
+.BR pam_xdg (8)
+.SH AUTHOR
+Written for integration with GNU Shepherd service manager.
+.SH BUGS
+Report bugs to the project maintainer.
